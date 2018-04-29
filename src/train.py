@@ -1,14 +1,10 @@
-import os
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import tensorflow as tf
 from PIL import Image
 
-# train_data_path = "D:\\dataset\\fer2013\\multi"
-train_data_path = "D:\\dataset\\fer2013\\out\\train"
-test_data_path = "D:\\dataset\\fer2013\\out\\test"
-file_path = "D:\\dataset\\fer2013\\fer2013.csv"
+
+file_path = 'D:\\dataset\\fer2013\\fer2013.csv'
 
 data = pd.read_csv(file_path, dtype='a')
 
@@ -16,259 +12,154 @@ label = np.array(data['emotion'])
 img_data = np.array(data['pixels'])
 
 N_sample = label.size
-# print label.size
+train_num = 28709
+test_num = 3589
+valid_num = 3589
 
-Face_data = np.zeros((N_sample, 48*48))
-Face_label = np.zeros((N_sample, 7), dtype=int)
-
-for i in range(N_sample):
-    x = img_data[i]
-    x = np.fromstring(x, dtype=float, sep=' ')
-    x_max = x.max()
-    x = x/(x_max+0.0001)
-#    print x_max
-#    print x
-    Face_data[i] = x
-    Face_label[i, int(label[i])] = 1
-#    img_x = np.reshape(x, (48, 48))
-#    plt.subplot(10,10,i+1)
-#    plt.axis('off')
-#    plt.imshow(img_x, plt.cm.gray)
-
-
-train_num = 30000
-test_num = 5000
-
-train_x = Face_data[0:train_num, :]
-train_y = Face_label[0:train_num, :]
-
-test_x = Face_data[train_num:train_num+test_num, :]
-test_y = Face_label[train_num:train_num+test_num, :]
-
-print("All is well")
-
-#
-# def load_data(path):
-#     label = []
-#     img_data = []
-#     for d in os.listdir(path):
-#         d_path = os.path.join(path, d)
-#         for _, _, files in os.walk(d_path):
-#             for img in files:
-#                 img_path = os.path.join(d_path, img)
-#                 image = Image.open(img_path).convert("L")
-#                 label.append(d)
-#                 img_data.append(np.array(image).flatten())
-#     return label, img_data
-#
-#
-# image_size = 48 * 48
-#
-# # train_size = 344508
-# # test_size = 3590
-# # train_size = 344500
-# train_size = 28700
-# test_size = 3550
-#
-# train_label, train_img_data = load_data(train_data_path)
-# test_label, test_img_data = load_data(test_data_path)
-#
-# train_label = np.array(train_label)
-# test_label = np.array(test_label)
-#
-# train_face_data = np.zeros((train_size, image_size))
-# train_face_label = np.zeros((train_size, 7), dtype=int)
-#
-# for i in range(train_size):
-#     x = train_img_data[i]
-#     x_max = x.max()
-#     x = x / (x_max + 0.0001)
-#     train_face_data[i] = x
-#     train_face_label[i][int(train_label[i])] = 1
-#
-# test_face_data = np.zeros((test_size, image_size))
-# test_face_label = np.zeros((test_size, 7), dtype=int)
-#
-# for i in range(test_size):
-#     x = test_img_data[i]
-#     x_max = x.max()
-#     x = x / (x_max + 0.0001)
-#     #    print x_max
-#     #    print x
-#     test_face_data[i] = x
-#     test_face_label[i][int(test_label[i])] = 1
-# #    img_x = np.reshape(x, (48, 48))
-# #    plt.subplot(10,10,i+1)
-# #    plt.axis("off")
-# #    plt.imshow(img_x, plt.cm.gray)
-#
-# train_x = train_face_data[0:train_size, :]
-# train_y = train_face_label[0:train_size, :]
-#
-# test_x = test_face_data[0:test_size, :]
-# test_y = test_face_label[0:test_size, :]
-#
-# print("All is well")
-
-batch_size = 50
-train_batch_num = int(train_num / batch_size)
-test_batch_num = int(test_num / batch_size)
-train_epoch = 100
-
+batch_size = 128
+num_steps = 2000
 learning_rate = 0.001
 # Network Parameters
-n_input = 48*48  # data input (img shape: 48*48)
-n_classes = 7  # total classes
-dropout = 0.5  # Dropout, probability to keep units
-
-# tf Graph input
-
-x = tf.placeholder(tf.float32, [None, n_input])
-y = tf.placeholder(tf.float32, [None, n_classes])
-keep_prob = tf.placeholder(tf.float32)  # dropout (keep probability)
+n_input = 48*48  # data input (img shape: 42*42)
+num_classes = 7  # total classes
+dropout = 0.25  # Dropout, probability to keep units
 
 
-# Create some wrappers for simplicity
+def get_face_data_label():
+    f_data = np.zeros((N_sample, n_input))
+    f_label = np.zeros(N_sample, dtype=int)
 
-def conv2d(x, W, b, strides=1):
-    # Conv2D wrapper, with bias and relu activation
-    x = tf.nn.conv2d(x, W, strides=[1, strides, strides, 1], padding='SAME')
-    x = tf.nn.bias_add(x, b)
-    return tf.nn.relu(x)
+    for i in range(N_sample):
+        x = img_data[i]
+        x = np.fromstring(x, dtype=float, sep=' ').reshape(48, 48)
+        x = np.asarray(x).flatten()
+        x_max = x.max()
+        x = x / (x_max + 0.0001)
+        f_data[i] = x
+        f_label[i] = int(label[i])
+
+    return f_data, f_label
 
 
-def maxpool2d(x, k=2):
-    # MaxPool2D wrapper
-    return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1],
-                          padding='VALID')
+Face_data, Face_label = get_face_data_label()
+
+train_x = Face_data[0:train_num, :]
+train_y = Face_label[0:train_num]
+
+test_x = Face_data[train_num:train_num+test_num, :]
+test_y = Face_label[train_num:train_num+test_num]
+
+valid_x = Face_data[train_num+test_num:train_num+test_num+valid_num, :]
+valid_y = Face_label[train_num+test_num:train_num+test_num+valid_num]
+
+print('All is well')
 
 
-# Create model
-def conv_net(x, weights, biases, dropout):
-    # Reshape input picture
-    x = tf.reshape(x, shape=[-1, 48, 48, 1])
+# Create the neural network
+def conv_net(x_dict, n_classes, dropout, reuse, is_training):
+    # Define a scope for reusing the variables
+    with tf.variable_scope('ConvNet', reuse=reuse):
+        # TF Estimator input is a dict, in case of multiple inputs
+        x = x_dict['images']
+        x = tf.cast(x, tf.float32)
+        # Reshape to match picture format [Height x Width x Channel]
+        # Tensor input become 4-D: [Batch Size, Height, Width, Channel]
+        x = tf.reshape(x, shape=[-1, 48, 48, 1])
 
-    # Convolution Layer
-    conv1 = conv2d(x, weights['wc1'], biases['bc1'])
-    # Max Pooling (down-sampling)
-    conv1 = maxpool2d(conv1, k=2)
+        # Convolution Layer with 32 filters and a kernel size of 5
+        conv1 = tf.layers.conv2d(x, 32, 5, activation=tf.nn.relu)
+        # Max Pooling (down-sampling) with strides of 2 and kernel size of 2
+        conv1 = tf.layers.max_pooling2d(conv1, 2, 2)
 
-    # Convolution Layer
-    conv2 = conv2d(conv1, weights['wc2'], biases['bc2'])
-    # Max Pooling (down-sampling)
-    conv2 = maxpool2d(conv2, k=2)
+        # Convolution Layer with 64 filters and a kernel size of 3
+        conv2 = tf.layers.conv2d(conv1, 64, 3, activation=tf.nn.relu)
+        # Max Pooling (down-sampling) with strides of 2 and kernel size of 2
+        conv2 = tf.layers.max_pooling2d(conv2, 2, 2)
 
-    # Convolution Layer
-    conv3 = conv2d(conv2, weights['wc3'], biases['bc3'])
-    # Max Pooling (down-sampling)
-    conv3 = maxpool2d(conv3, k=2)
+        # Convolution Layer with 128 filters and a kernel size of 3
+        conv3 = tf.layers.conv2d(conv2, 128, 3, activation=tf.nn.relu)
+        # Max Pooling (down-sampling) with strides of 2 and kernel size of 2
+        conv3 = tf.layers.max_pooling2d(conv3, 2, 2)
 
-    # Fully connected layer
-    # Reshape conv2 output to fit fully connected layer input
-    fc1 = tf.reshape(conv3, [-1, weights['wd1'].get_shape().as_list()[0]])
-    fc1 = tf.add(tf.matmul(fc1, weights['wd1']), biases['bd1'])
-    fc1 = tf.nn.relu(fc1)
+        # Flatten the data to a 1-D vector for the fully connected layer
+        fc1 = tf.contrib.layers.flatten(conv3)
 
-    # Apply Dropout
-    fc1 = tf.nn.dropout(fc1, dropout)
+        # Fully connected layer (in tf contrib folder for now)
+        fc1 = tf.layers.dense(fc1, 1024)
+        # Apply Dropout (if is_training is False, dropout is not applied)
+        fc1 = tf.layers.dropout(fc1, rate=dropout, training=is_training)
 
-    # Output, class prediction
-    out = tf.add(tf.matmul(fc1, weights['out']), biases['out'])
+        # Output layer, class prediction
+        out = tf.layers.dense(fc1, n_classes)
 
     return out
 
 
-# Store layers weight & bias
-weights = {
-    # 3x3 conv, 1 input, 128 outputs
-    'wc1': tf.Variable(tf.random_normal([3, 3, 1, 128])),
-    # 3x3 conv, 128 inputs, 64 outputs
-    'wc2': tf.Variable(tf.random_normal([3, 3, 128, 64])),
-    # 3x3 conv, 64 inputs, 32 outputs
-    'wc3': tf.Variable(tf.random_normal([3, 3, 64, 32])),
-    # fully connected,
-    'wd1': tf.Variable(tf.random_normal([6 * 6 * 32, 200])),
-    # 1024 inputs, 10 outputs (class prediction)
-    'out': tf.Variable(tf.random_normal([200, n_classes]))
-}
+# Define the model function (following TF Estimator Template)
+def model_fn(features, labels, mode):
+    # Build the neural network
+    # Because Dropout have different behavior at training and prediction time, we
+    # need to create 2 distinct computation graphs that still share the same weights.
+    logits_train = conv_net(features, num_classes, dropout, reuse=False, is_training=True)
+    logits_test = conv_net(features, num_classes, dropout, reuse=True, is_training=False)
 
-biases = {
-    'bc1': tf.Variable(tf.random_normal([128])),
+    # Predictions
+    pred_classes = tf.argmax(logits_test, axis=1)
 
-    'bc2': tf.Variable(tf.random_normal([64])),
+    # If prediction mode, early return
+    if mode == tf.estimator.ModeKeys.PREDICT:
+        return tf.estimator.EstimatorSpec(mode, predictions=pred_classes)
 
-    'bc3': tf.Variable(tf.random_normal([32])),
+    # Define loss and optimizer
+    loss_op = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
+        logits=logits_train, labels=tf.cast(labels, dtype=tf.int32)))
+    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+    train_op = optimizer.minimize(loss_op, global_step=tf.train.get_global_step())
 
-    'bd1': tf.Variable(tf.random_normal([200])),
+    # Evaluate the accuracy of the model
+    acc_op = tf.metrics.accuracy(labels=labels, predictions=pred_classes)
 
-    'out': tf.Variable(tf.random_normal([n_classes]))
-}
+    # TF Estimators requires to return a EstimatorSpec, that specify
+    # the different ops for training, evaluating, ...
+    estim_specs = tf.estimator.EstimatorSpec(
+        mode=mode,
+        predictions=pred_classes,
+        loss=loss_op,
+        train_op=train_op,
+        eval_metric_ops={'accuracy': acc_op})
 
-# Construct model
-pred = conv_net(x, weights, biases, keep_prob)
+    return estim_specs
 
-# Define loss and optimizer
-cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=pred, labels=y))
-optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 
-# Evaluate model
-correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
-accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+model = tf.estimator.Estimator(model_fn)
+# Define the input function for training
+input_fn = tf.estimator.inputs.numpy_input_fn(
+    x={'images': train_x}, y=train_y,
+    batch_size=batch_size, num_epochs=None, shuffle=True)
+# Train the Model
+print(model.train(input_fn, steps=num_steps))
 
-# Initializing the variables
-init = tf.initialize_all_variables()
+# Evaluate the Model
+# Define the input function for evaluating
+input_fn = tf.estimator.inputs.numpy_input_fn(
+    x={'images': valid_x}, y=valid_y,
+    batch_size=batch_size, shuffle=False)
+# Use the Estimator 'evaluate' method
+print(model.evaluate(input_fn))
 
-Train_ind = np.arange(train_num)
-Test_ind = np.arange(test_num)
 
-with tf.Session() as sess:
-    sess.run(init)
-    for epoch in range(0, train_epoch):
+# Prepare the input data
+input_fn = tf.estimator.inputs.numpy_input_fn(
+    x={'images': test_x}, shuffle=False)
+# Use the model to predict the images class
+preds = list(model.predict(input_fn))
+yes = 0
 
-        Total_test_loss = 0
-        Total_test_acc = 0
+# Display
+for i in range(test_num):
+    # plt.imshow(np.reshape(test_images[i], [48, 48]), cmap='gray')
+    # plt.show()
+    if preds[i] == test_y[i]:
+        yes += 1
 
-        for train_batch in range(0, train_batch_num):
-            sample_ind = Train_ind[train_batch * batch_size:(train_batch + 1) * batch_size]
-            batch_x = train_x[sample_ind, :]
-            batch_y = train_y[sample_ind, :]
-            # Run optimization op (backprop)
-            sess.run(optimizer, feed_dict={x: batch_x, y: batch_y,
-                                           keep_prob: dropout})
-
-            if train_batch % batch_size == 0:
-                # Calculate loss and accuracy
-                loss, acc = sess.run([cost, accuracy], feed_dict={x: batch_x,
-                                                                  y: batch_y,
-                                                                  keep_prob: 1.})
-
-                print("Epoch: " + str(epoch + 1) + ", Batch: " + str(train_batch) + ", Loss= " +
-                      "{:.3f}".format(loss) + ", Training Accuracy= " +
-                      "{:.3f}".format(acc))
-
-        # Calculate test loss and test accuracy
-        for test_batch in range(0, test_batch_num):
-            sample_ind = Test_ind[test_batch * batch_size:(test_batch + 1) * batch_size]
-            batch_x = test_x[sample_ind, :]
-            batch_y = test_y[sample_ind, :]
-            test_loss, test_acc = sess.run([cost, accuracy], feed_dict={x: batch_x,
-                                                                        y: batch_y,
-                                                                        keep_prob: 1.})
-            Total_test_lost = Total_test_loss + test_loss
-            Total_test_acc = Total_test_acc + test_acc
-
-        Total_test_acc = Total_test_acc / test_batch_num
-        Total_test_loss = Total_test_lost / test_batch_num
-
-        print("Epoch: " + str(epoch + 1) + ", Test Loss= " + \
-              "{:.3f}".format(Total_test_loss) + ", Test Accuracy= " + \
-              "{:.3f}".format(Total_test_acc))
-
-plt.subplot(2, 1, 1)
-plt.ylabel('Test loss')
-plt.plot(Total_test_loss, 'r')
-plt.subplot(2, 1, 2)
-plt.ylabel('Test Accuracy')
-plt.plot(Total_test_acc, 'r')
-
-plt.show()
+print(yes / test_num)
