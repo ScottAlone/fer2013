@@ -92,10 +92,11 @@ def predict_prob(number, test_set_x, model):
 
 
 model = model_generate()
-filepath = r'C:\Users\Scott\Desktop\report\report6\MPM5.hdf5'
+filepath = r'E:\models\Model.127-0.5684.hdf5'
 model.load_weights(filepath)
 
-test_set_x, test_set_y = dataprocessing.load_test_data()
+# test_set_x, test_set_y = dataprocessing.load_test_data()
+file_names, test_set_x = dataprocessing.read_single_image(r'C:\Users\Scott\Desktop\report\32609443\face2.png')
 
 proba = predict_prob(0, test_set_x, model)
 proba1 = predict_prob(1, test_set_x, model)
@@ -105,12 +106,13 @@ proba4 = predict_prob(4, test_set_x, model)
 proba5 = predict_prob(5, test_set_x, model)
 proba6 = predict_prob(6, test_set_x, model)
 proba7 = predict_prob(7, test_set_x, model)
-Out = []
+out = []
 for row in zip(proba, proba1, proba2, proba3, proba4, proba5, proba6, proba7):
     a = numpy.argmax(np.array(row).mean(axis=0))
-    Out.append(a)
+    out.append(a)
 
-Out = np.array(Out)
-test_set_y = np.array(test_set_y)
-c = np.sum(Out == test_set_y)
-print("Acc:" + str((float(c) / len(Out))))
+# out = np.array(out)
+# test_set_y = np.array(test_set_y)
+# c = np.sum(out == test_set_y)
+# print("Acc:" + str((float(c) / len(out))))
+print({face: emotion for face, emotion in zip(file_names, out)})

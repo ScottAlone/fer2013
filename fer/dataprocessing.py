@@ -1,4 +1,5 @@
 import numpy
+import os
 import csv
 import scipy.misc
 import scipy
@@ -134,6 +135,50 @@ def Zerocenter_ZCA_whitening_Global_Contrast_Normalize(list):
     data4 = global_contrast_normalize(data3)
     data5 = numpy.rot90(data4, 3)
     return data5
+
+
+def read_single_image(path):
+    """
+    获取单个图片
+    :param path: 图片路径
+    :return: 文件名，图片信息
+    """
+    pixels = np.asarray(cv2.resize(cv2.imread(path, cv2.IMREAD_GRAYSCALE), (48, 48))).flatten()
+    temp_list = []
+    for pixel in pixels:
+        temp_list.append(int(pixel))
+
+    return [os.path.basename(path)], [Zerocenter_ZCA_whitening_Global_Contrast_Normalize(temp_list)]
+
+
+def read_image(path):
+    """
+    :param path: 图片路径
+    :return:  文件名，图片信息
+    """
+    pixels = np.asarray(cv2.resize(cv2.imread(path, cv2.IMREAD_GRAYSCALE), (48, 48))).flatten()
+    temp_list = []
+    for pixel in pixels:
+        temp_list.append(int(pixel))
+
+    return Zerocenter_ZCA_whitening_Global_Contrast_Normalize(temp_list)
+
+
+def read_folder(path):
+    """
+    获取某个文件夹下所有图片
+    :param path: 文件夹
+    :return: 文件名，图片信息
+    """
+    file_names = []
+    test_set_x = []
+    for _, _, files in os.walk(path):
+        for f in files:
+            if f.endswith("png"):
+                file_names.append(f)
+                test_set_x.append(read_image(os.path.join(path, f)))
+
+    return file_names, test_set_x
 
 
 def load_test_data():
