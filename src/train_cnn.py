@@ -1,61 +1,16 @@
-import numpy as np
-import pandas as pd
 import tensorflow as tf
-from PIL import Image
-
-
-file_path = 'D:\\dataset\\fer2013\\fer2013.csv'
-
-data = pd.read_csv(file_path, dtype='a')
-
-label = np.array(data['emotion'])
-img_data = np.array(data['pixels'])
-
-N_sample = label.size
-train_num = 28709
-test_num = 3589
-valid_num = 3589
+from src.get_data import get_face_data_label_origin, get_emotion_type
 
 batch_size = 128
 num_steps = 2000
 learning_rate = 0.001
 # Network Parameters
-n_input = 48*48  # data input (img shape: 42*42)
 num_classes = 7  # total classes
 dropout = 0.25  # Dropout, probability to keep units
+train_x, train_y, test_x, test_y, valid_x, valid_y = get_face_data_label_origin()
+emotion_dict = get_emotion_type()
 
 
-def get_face_data_label():
-    f_data = np.zeros((N_sample, n_input))
-    f_label = np.zeros(N_sample, dtype=int)
-
-    for i in range(N_sample):
-        x = img_data[i]
-        x = np.fromstring(x, dtype=float, sep=' ').reshape(48, 48)
-        x = np.asarray(x).flatten()
-        x_max = x.max()
-        x = x / (x_max + 0.0001)
-        f_data[i] = x
-        f_label[i] = int(label[i])
-
-    return f_data, f_label
-
-
-Face_data, Face_label = get_face_data_label()
-
-train_x = Face_data[0:train_num, :]
-train_y = Face_label[0:train_num]
-
-test_x = Face_data[train_num:train_num+test_num, :]
-test_y = Face_label[train_num:train_num+test_num]
-
-valid_x = Face_data[train_num+test_num:train_num+test_num+valid_num, :]
-valid_y = Face_label[train_num+test_num:train_num+test_num+valid_num]
-
-print('All is well')
-
-
-# Create the neural network
 def conv_net(x_dict, n_classes, dropout, reuse, is_training):
     # Define a scope for reusing the variables
     with tf.variable_scope('ConvNet', reuse=reuse):
@@ -64,7 +19,7 @@ def conv_net(x_dict, n_classes, dropout, reuse, is_training):
         x = tf.cast(x, tf.float32)
         # Reshape to match picture format [Height x Width x Channel]
         # Tensor input become 4-D: [Batch Size, Height, Width, Channel]
-        x = tf.reshape(x, shape=[-1, 48, 48, 1])
+        x = tf.reshape(x, shape=[-1, 42, 42, 1])
 
         # Convolution Layer with 32 filters and a kernel size of 5
         conv1 = tf.layers.conv2d(x, 32, 5, activation=tf.nn.relu)
@@ -156,10 +111,38 @@ preds = list(model.predict(input_fn))
 yes = 0
 
 # Display
-for i in range(test_num):
+appear_counter = {i: {j: 0 for j in range(7)} for i in range(7)}
+total_counter = {i: 0 for i in range(7)}
+
+for i in range(len(test_x)):
     # plt.imshow(np.reshape(test_images[i], [48, 48]), cmap='gray')
     # plt.show()
+    # count appearance
+    tmp_count = total_counter.get(test_y[i])
+    total_counter.__setitem__(test_y[i], tmp_count + 1)
+    tmp_class = appear_counter.get(test_y[i])
+    tmp_count = tmp_class.get(preds[i])
+    appear_counter.get(test_y[i]).__setitem__(preds[i], tmp_count + 1)
     if preds[i] == test_y[i]:
         yes += 1
 
-print(yes / test_num)
+print(yes / len(test_x))
+for i in range(7):
+    appear = appear_counter.get(i)
+    total = total_counter.get(i)
+    rate_list = []
+    for j in range(7):
+        appear_count = appear.get(j)
+        total_count = total
+        rate_list.append(appear_count / total_count * 100)
+
+    print("| {} | {:.2f}% | {:.2f}% | {:.2f}% | {:.2f}% | {:.2f}% | {:.2f}% | {:.2f}% |".format(
+        emotion_dict.get(i),
+        rate_list[0],
+        rate_list[1],
+        rate_list[2],
+        rate_list[3],
+        rate_list[4],
+        rate_list[5],
+        rate_list[6],
+    ))
