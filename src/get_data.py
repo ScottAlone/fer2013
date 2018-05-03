@@ -4,16 +4,16 @@ import pandas as pd
 from PIL import Image
 
 
-out_path = r'D:\dataset\fer2013\fer2013.csv_'
+out_path = r'D:\dataset\fer2013\fer2013.csv'
 data = pd.read_csv(out_path, dtype='a')
 label = np.array(data['emotion'])
 img_data = np.array(data['pixels'])
 usage = np.array(data['Usage'])
 
 N_sample = label.size
-train_num = len([n for n in usage if usage == 'Training'])
-test_num = len([n for n in usage if usage == 'PublicTest'])
-valid_num = len([n for n in usage if usage == 'PrivateTest'])
+train_num = len([n for n in usage if n == 'Training'])
+test_num = len([n for n in usage if n == 'PublicTest'])
+valid_num = len([n for n in usage if n == 'PrivateTest'])
 n_input = 48*48  # data input (img shape: 48*48)
 n_input_sliced = 42*42  # data input (img shape: 42*42)
 

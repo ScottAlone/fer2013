@@ -61,7 +61,7 @@ def model_generate():
 
 
 img_rows, img_cols = 48, 48
-batch_size = 64
+batch_size = 128
 nb_classes = 7
 nb_epoch = 1200
 img_channels = 1
