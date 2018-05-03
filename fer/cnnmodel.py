@@ -1,5 +1,5 @@
 import keras
-import numpy
+import numpy as np
 from fer import dataprocessing
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten
@@ -7,6 +7,7 @@ from keras.layers import Convolution2D, MaxPooling2D
 from keras.optimizers import Adadelta
 from keras.utils import np_utils
 from keras.preprocessing.image import ImageDataGenerator
+from keras.callbacks import TensorBoard
 from keras import backend
 
 backend.set_image_dim_ordering('th')
@@ -14,6 +15,7 @@ backend.set_image_dim_ordering('th')
 
 def model_generate():
     img_rows, img_cols = 48, 48
+
     model = Sequential()
     model.add(Convolution2D(64, 5, 5, border_mode='valid',
                             input_shape=(1, img_rows, img_cols)))
@@ -48,7 +50,6 @@ def model_generate():
     model.add(Dropout(0.2))
 
     model.add(Dense(7))
-
     model.add(Activation('softmax'))
 
     ada = Adadelta(lr=0.1, rho=0.95, epsilon=1e-08)
@@ -60,17 +61,17 @@ def model_generate():
 
 
 img_rows, img_cols = 48, 48
-batch_size = 128
+batch_size = 64
 nb_classes = 7
 nb_epoch = 1200
 img_channels = 1
 
 Train_x, Train_y, Val_x, Val_y = dataprocessing.load_data()
 
-Train_x = numpy.asarray(Train_x)
+Train_x = np.asarray(Train_x)
 Train_x = Train_x.reshape(Train_x.shape[0], img_rows, img_cols)
 
-Val_x = numpy.asarray(Val_x)
+Val_x = np.asarray(Val_x)
 Val_x = Val_x.reshape(Val_x.shape[0], img_rows, img_cols)
 
 Train_x = Train_x.reshape(Train_x.shape[0], 1, img_rows, img_cols)
@@ -83,6 +84,8 @@ Train_y = np_utils.to_categorical(Train_y, nb_classes)
 Val_y = np_utils.to_categorical(Val_y, nb_classes)
 
 model = model_generate()
+# load trained model
+# model = load_model(r'E:\final.hdf5')
 
 filepath = r'E:\models\Model.{epoch:02d}-{val_acc:.4f}.hdf5'
 checkpointer = keras.callbacks.ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False,
@@ -107,4 +110,4 @@ model.fit_generator(datagen.flow(Train_x, Train_y,
                     samples_per_epoch=Train_x.shape[0],
                     nb_epoch=nb_epoch,
                     validation_data=(Val_x, Val_y),
-                    callbacks=[checkpointer])
+                    callbacks=[checkpointer, TensorBoard(log_dir=r'E:\models\log')])

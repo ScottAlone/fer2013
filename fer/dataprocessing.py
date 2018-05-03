@@ -1,4 +1,3 @@
-import numpy
 import os
 import csv
 import scipy.misc
@@ -41,23 +40,23 @@ def global_contrast_normalize(X, scale=1., subtract_mean=True, use_std=True,
 
     mean = X.mean(axis=1)
     if subtract_mean:
-        X = X - mean[:, numpy.newaxis]
+        X = X - mean[:, np.newaxis]
     else:
         X = X.copy()
     if use_std:
         ddof = 1
         if X.shape[1] == 1:
             ddof = 0
-        normalizers = numpy.sqrt(sqrt_bias + X.var(axis=1, ddof=ddof)) / scale
+        normalizers = np.sqrt(sqrt_bias + X.var(axis=1, ddof=ddof)) / scale
     else:
-        normalizers = numpy.sqrt(sqrt_bias + (X ** 2).sum(axis=1)) / scale
+        normalizers = np.sqrt(sqrt_bias + (X ** 2).sum(axis=1)) / scale
     normalizers[normalizers < min_divisor] = 1.
-    X /= normalizers[:, numpy.newaxis]  # Does not make a copy.
+    X /= normalizers[:, np.newaxis]  # Does not make a copy.
     return X
 
 
 def ZeroCenter(data):
-    data = data - numpy.mean(data, axis=0)
+    data = data - np.mean(data, axis=0)
     return data
 
 
@@ -128,12 +127,12 @@ def outputImage(pixels, number):
 
 
 def Zerocenter_ZCA_whitening_Global_Contrast_Normalize(list):
-    Intonumpyarray = numpy.asarray(list)
+    Intonumpyarray = np.asarray(list)
     data = Intonumpyarray.reshape(48, 48)
     data2 = ZeroCenter(data)
     data3 = zca_whitening(flatten_matrix(data2)).reshape(48, 48)
     data4 = global_contrast_normalize(data3)
-    data5 = numpy.rot90(data4, 3)
+    data5 = np.rot90(data4, 3)
     return data5
 
 
